@@ -70,13 +70,28 @@ def checkout(path, pin):
     return False
 
 
+def apply_mesa_patch(mesa, patch):
+    """Apply one recorded Mesa patch. git apply is the normal path, but the
+    macOS git on the CI runners rejects a new-file diff whose old name is
+    /dev/null ("error: dev/null: No such file or directory"), so fall back to
+    patch(1), which applies the same diff. git apply verifies every hunk
+    before writing anything, so a failed attempt leaves the tree unchanged
+    for the fallback."""
+    try:
+        run('git', '-C', mesa, 'apply', ROOT / patch)
+    except subprocess.CalledProcessError:
+        print(f'git apply failed for {patch}; retrying with patch -p1', flush=True)
+        run('patch', '-p1', '-d', mesa, input=(ROOT / patch).read_bytes())
+
+
+
 def build_plugin(target):
     pins = json.loads((ROOT / 'scripts/data/adreno-compiler-inputs.json').read_text())
     mesa = ROOT / '.cache/mesa-work'
     fresh = checkout(mesa, pins['mesa'])
     if fresh:
         for patch in pins['patches']:
-            run('git', '-C', mesa, 'apply', ROOT / patch)
+            apply_mesa_patch(mesa, patch)
     validate_recorded_patches(ROOT, mesa, pins)
     translator = json.loads((ROOT / 'scripts/data/gpu-metal-vulkan-inputs.json').read_text())['translator']
     checkout(ROOT / '.cache/gpu-reference/metal2vulkan', translator)
