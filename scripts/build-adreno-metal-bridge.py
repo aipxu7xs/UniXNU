@@ -142,7 +142,9 @@ if args.manifest_only:
     raise SystemExit(0)
 triple = {'ios': 'aarch64-apple-ios', 'ios27': 'arm64e-apple-ios', 'host': 'aarch64-apple-darwin'}[args.target]
 # arm64e has no prebuilt std: it is built from rust-src (RUSTC_BOOTSTRAP for -Z); the iPadOS 27 processes that load the plugin are arm64e.
-cargo = ['cargo', '+1.98.0'] + (['-Z', 'build-std=std,panic_unwind'] if args.target == 'ios27' else [])
+# Homebrew's rustup is a shim that re-execs the real binary as "rustup", so the
+# `cargo +toolchain` proxy form never reaches cargo; `rustup run` bypasses it.
+cargo = ['rustup', 'run', '1.98.0', 'cargo'] + (['-Z', 'build-std=std,panic_unwind'] if args.target == 'ios27' else [])
 # The translator source the runtime is built from (its pin and recorded patches), which keys the shader cache: shader priming keeps what it
 # finished while this stays the same (PrimeShaders.h).
 runtime_id = hashlib.sha256((PIN + '\n' + states[-1]).encode()).hexdigest()[:32]
