@@ -30,7 +30,14 @@ def validate_recorded_patches(root, source, pins):
             result = subprocess.run(['git', 'apply', '--reverse', str(root / patch)], cwd=stripped,
                                     capture_output=True, text=True, timeout=20)
             if result.returncode:
-                raise SystemExit('Recorded Mesa patch sequence differs: ' + patch + '\n' + result.stderr)
+                                # Same macOS git new-file limitation as the forward apply;
+                # patch(1) reverses the diff instead.
+                fallback = subprocess.run(['patch', '-R', '-p1'], cwd=stripped,
+                                          input=(root / patch).read_text(),
+                                          capture_output=True, text=True, timeout=20)
+                if fallback.returncode:
+                    raise SystemExit('Recorded Mesa patch sequence differs: ' + patch + '\n'
+                                     + result.stderr + fallback.stderr)
         for path in paths:
             original = subprocess.run(['git', '-C', source, 'show', 'HEAD:' + path], capture_output=True, timeout=20)
             actual = stripped / path
