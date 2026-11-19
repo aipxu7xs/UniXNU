@@ -137,15 +137,24 @@ def main():
                                f'const uint32_t native_touch_firmware_size = {len(data)};\n'
                                f'const uint8_t native_touch_firmware[{len(data)}] = {{' +
                                ','.join(str(value) for value in data) + '};\n')
+    # The iPadOS 27 board profile does not select the QcomGeniSpi component, so the
+        # assembled tree has no drivers/QcomGeniSpi. The core checkout carries it as a
+        # submodule, and the tree's components.toml is a symlink back into that checkout;
+        # prefer whichever location actually holds the header.
+        geni_spi = ROOT / 'drivers/QcomGeniSpi'
+    if not (geni_spi / 'GeniSpi.h').is_file():
+                core = (ROOT / 'components.toml').resolve().parent
+                if (core / 'drivers/QcomGeniSpi/GeniSpi.h').is_file():
+                                geni_spi = core / 'drivers/QcomGeniSpi'
     components = {
         'ShengUfs': [(device / 'drivers/ShengUfs/NativeUfs.cpp', [
             '-DNATIVE_VERIFIED_BLOCK=1', '-DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1',
             '-I', str(ROOT / 'kits/VerifiedRoot/include'), '-I', str(ROOT / 'drivers/VirtioMmioBlock')])],
         'ShengHidInput': [(device / 'drivers/ShengHidInput/NativeHidInput.cpp', ['-DNATIVE_HID_SOURCE_API=1'])],
         'ShengInputTransport': [(device / 'package/TouchProbe.cpp', [
-            '-I', str(ROOT / 'drivers/QcomGeniSpi'), '-I', str(device / 'drivers/ShengNovatekTouch')]),
+            '-I', str(geni_spi), '-I', str(device / 'drivers/ShengNovatekTouch')]),
             (device / 'package/ButtonProbe.cpp', []),
-            (ROOT / 'drivers/QcomGeniSpi/GeniSpi.c', []),
+            (geni_spi / 'GeniSpi.c', []),
             (device / 'drivers/ShengNovatekTouch/NvtProtocol.c', []),
             (device / 'drivers/ShengNovatekTouch/NvtTouchCore.c', []),
             (firmware_source, [])],
