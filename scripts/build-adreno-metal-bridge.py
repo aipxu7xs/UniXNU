@@ -155,7 +155,7 @@ target_dir = ROOT / 'build/m2v-target'
 log = out / ('build-%s.log' % args.target)
 with log.open('w') as stream:
     result = subprocess.run(cargo + ['build', '--release', '--manifest-path', manifest, '--target', triple,
-                             '--target-dir', target_dir], env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=1800)
+                             '--target-dir', target_dir], env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=7200)
 if result.returncode:
     raise SystemExit(log.read_text()[-6000:])
 library = target_dir / triple / 'release/libadreno_metal_bridge.a'
